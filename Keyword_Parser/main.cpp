@@ -1,3 +1,9 @@
+/*
+	Program: Keyword_Parser
+
+	Parse每個檔案鎖包含的不重複關鍵字，輸出檔名為檔案ID
+ */
+
 #define _CRT_SECURE_NO_WARNINGS
 
 #include <iostream>
@@ -5,9 +11,16 @@
 #include <string>
 #include <algorithm>
 #include <vector>
+#include <cstdlib>
 #include <dirent.h>
 
+#include <md5.h>
+#include <hex.h>
+
+#pragma comment(lib, "cryptlib.lib")
+
 using namespace std;
+using namespace CryptoPP;
 
 bool char_reco(char c)
 {
@@ -17,13 +30,43 @@ bool char_reco(char c)
 		return false;
 }
 
+int file_ID_cal(string file_name)
+{
+	int ID;
+	int p1, p2, p3, p4;
+
+	CryptoPP::MD5 hash;
+	byte digest[CryptoPP::MD5::DIGESTSIZE];
+
+	HexEncoder encoder;
+	string output;
+
+	hash.CalculateDigest(digest, (byte*)file_name.c_str(), file_name.length());
+
+	encoder.Attach(new StringSink(output));
+	encoder.Put(digest, sizeof(digest));
+	encoder.MessageEnd();
+
+	//cout << output << std::endl;
+
+	strncpy((char*)&p1, (char*)&digest[0], 4);
+	strncpy((char*)&p2, (char*)&digest[4], 4);
+	strncpy((char*)&p3, (char*)&digest[8], 4);
+	strncpy((char*)&p4, (char*)&digest[12], 4);
+
+	ID = p1 ^ p2 ^ p3 ^ p4;
+	//cout << ID << endl;
+
+	return ID;
+}
+
 
 int main()
 {
 	fstream doc_file, list_file;
 	string doc_path, list_path;
 	char buf[1024];
-	int start, end, length;
+	int start, end, length, file_ID;
 
 	string keyword, file_name;
 	
@@ -44,6 +87,8 @@ int main()
 			v.clear();
 			printf("Processing file: %s\n", ep->d_name);
 			file_name.assign(ep->d_name);
+			file_ID = file_ID_cal(file_name);
+			
 			doc_path = "./Doc/" + file_name;
 			doc_file.open(doc_path, ios::in);
 			if (!doc_file)
@@ -88,7 +133,7 @@ int main()
 
 				sort(v.begin(), v.end());
 
-				list_path = "./List/" + file_name + ".list";
+				list_path = "./List/" + to_string(file_ID) + ".list";
 				list_file.open(list_path, ios::out);
 				if (!list_file)
 					cerr << "Error: open " << list_path << "  failed..." << endl;
