@@ -12,6 +12,8 @@
 #include <algorithm>
 #include <vector>
 #include <cstdlib>
+#include <iomanip>
+#include <windows.h>
 #include <dirent.h>
 
 #include <md5.h>
@@ -63,8 +65,8 @@ int file_ID_cal(string file_name)
 
 int main()
 {
-	fstream doc_file, list_file;
-	string doc_path, list_path;
+	fstream doc_file, list_file, log_file;
+	string doc_path, list_path, log_path = "./Keyword_Parser_Log.txt";
 	char buf[1024];
 	int start, end, length, file_ID;
 
@@ -77,6 +79,16 @@ int main()
 	struct dirent *ep;
 	doc_path = "./Doc/";
 
+	log_file.open(log_path, ios::out);
+	if (!log_file)
+		cerr << "Error: can not create log file: " << log_path << endl;
+
+	LARGE_INTEGER startTime, endTime, fre;
+	double times;
+
+	QueryPerformanceFrequency(&fre); // 取得CPU頻率
+	QueryPerformanceCounter(&startTime); // 取得開機到現在經過幾個CPU Cycle
+	/* Program to Timing */
 	dp = opendir(doc_path.c_str()); // for each file f, create a list f_bar of unique keyword
 	if (dp != NULL)
 	{
@@ -85,14 +97,17 @@ int main()
 		while (ep = readdir(dp))
 		{
 			v.clear();
-			printf("Processing file: %s\n", ep->d_name);
+			//printf("Processing file: %s\n", ep->d_name);
 			file_name.assign(ep->d_name);
 			file_ID = file_ID_cal(file_name);
 			
 			doc_path = "./Doc/" + file_name;
 			doc_file.open(doc_path, ios::in);
 			if (!doc_file)
+			{
 				cerr << "Error: open " << doc_path << "  failed..." << endl;
+				log_file << "Error: open " << doc_path << "  failed..." << endl;
+			}
 			else
 			{
 				memset(buf, 0, sizeof(buf));
@@ -136,7 +151,10 @@ int main()
 				list_path = "./List/" + to_string(file_ID) + ".list";
 				list_file.open(list_path, ios::out);
 				if (!list_file)
+				{
 					cerr << "Error: open " << list_path << "  failed..." << endl;
+					log_file << "Error: open " << list_path << "  failed..." << endl;
+				}
 				else
 				{
 
@@ -150,10 +168,17 @@ int main()
 				list_file.close();
 			}
 
-			cout << "Parse " << v.size() << " not duplicate keywords" << endl << endl;
+			//cout << "Parse " << v.size() << " not duplicate keywords" << endl << endl;
 		}
 	}
+	/* Program to Timing */
+	QueryPerformanceCounter(&endTime); // 取得開機到程式執行完成經過幾個CPU Cycle
+	times = ((double)endTime.QuadPart - (double)startTime.QuadPart) / fre.QuadPart;
 
+	cout << fixed << setprecision(3) << "Processing time: " << times << 's' << endl << endl;
+	log_file << fixed << setprecision(3) << "Processing time: " << times << 's' << endl << endl;
+
+	log_file.close();
 	system("PAUSE");
 	return 0;
 }
