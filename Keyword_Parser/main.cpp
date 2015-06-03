@@ -145,6 +145,7 @@ int main()
 										if (length > 0)
 										{
 											keyword.assign(buf, start, length);
+											keyword.shrink_to_fit(); // requests the string to reduce its capacity to fit its size
 											//cout << keyword << endl;
 											iter = find(list_map[file_ID].begin(), list_map[file_ID].end(), keyword);
 											if (iter == list_map[file_ID].end())
@@ -163,7 +164,7 @@ int main()
 
 					sort(list_map[file_ID].begin(), list_map[file_ID].end());
 					list_map[file_ID].shrink_to_fit(); // requests the container to reduce its capacity to fit its size
-					cout << "Capacity = " << list_map[file_ID].capacity() << endl;
+					//cout << "Capacity = " << list_map[file_ID].capacity() << endl;
 
 					doc_file.close();
 				}
