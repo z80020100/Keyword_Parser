@@ -68,12 +68,17 @@ int main()
 	fstream doc_file, list_file, log_file;
 	string doc_path, list_path, log_path = "./Keyword_Parser_Log.txt";
 	char buf[1024];
-	int start, end, length, file_ID;
+	int start, end, length, file_ID, temp_number;
 
 	string keyword, file_name;
 	
-	vector<string> v;
+	//vector<string> v;
 	vector<string>::iterator iter;
+
+	map < int, vector<string> > list_map;
+	map < int, vector<string> >::iterator it;
+
+	cout << "Map Maximum = " << list_map.max_size() << endl;
 	
 	DIR *dp;
 	struct dirent *ep;
@@ -92,83 +97,97 @@ int main()
 	dp = opendir(doc_path.c_str()); // for each file f, create a list f_bar of unique keyword
 	if (dp != NULL)
 	{
-		readdir(dp); // .
-		readdir(dp); // ..
-		while (ep = readdir(dp))
+		list_path = "./List/Fordward_Index.list";
+		list_file.open(list_path, ios::out | ios::binary);
+		if (!list_file)
 		{
-			v.clear();
-			//printf("Processing file: %s\n", ep->d_name);
-			file_name.assign(ep->d_name);
-			file_ID = file_ID_cal(file_name);
-			
-			doc_path = "./Doc/" + file_name;
-			doc_file.open(doc_path, ios::in);
-			if (!doc_file)
+			cerr << "Error: open " << list_path << "  failed..." << endl;
+			log_file << "Error: open " << list_path << "  failed..." << endl;
+		}
+		else
+		{
+			readdir(dp); // .
+			readdir(dp); // ..
+			while (ep = readdir(dp))
 			{
-				cerr << "Error: open " << doc_path << "  failed..." << endl;
-				log_file << "Error: open " << doc_path << "  failed..." << endl;
-			}
-			else
-			{
-				memset(buf, 0, sizeof(buf));
-				while (doc_file.getline(buf, sizeof(buf)))
-				{
-					//cout << buf << endl;
+				//v.clear();
+				//printf("Processing file: %s\n", ep->d_name);
+				file_name.assign(ep->d_name);
+				file_ID = file_ID_cal(file_name);
+				list_map[file_ID].clear();
 
-					for (int i = 0; i < sizeof(buf); i++)
+				doc_path = "./Doc/" + file_name;
+				doc_file.open(doc_path, ios::in);
+				if (!doc_file)
+				{
+					cerr << "Error: open " << doc_path << "  failed..." << endl;
+					log_file << "Error: open " << doc_path << "  failed..." << endl;
+				}
+				else
+				{
+					memset(buf, 0, sizeof(buf));
+					while (doc_file.getline(buf, sizeof(buf)))
 					{
-						if (char_reco(buf[i]))
+						//cout << buf << endl;
+
+						for (int i = 0; i < sizeof(buf); i++)
 						{
-							//cout << buf[i] << endl;
-							start = i;
-							for (int j = i + 1; j < sizeof(buf); j++)
+							if (char_reco(buf[i]))
 							{
-								if (!char_reco(buf[j]))
+								//cout << buf[i] << endl;
+								start = i;
+								for (int j = i + 1; j < sizeof(buf); j++)
 								{
-									end = j;
-									length = end - start;
-									if (length > 0)
+									if (!char_reco(buf[j]))
 									{
-										keyword.assign(buf, start, length);
-										//cout << keyword << endl;
-										iter = find(v.begin(), v.end(), keyword);
-										if (iter == v.end())
+										end = j;
+										length = end - start;
+										if (length > 0)
 										{
-											v.push_back(keyword);
+											keyword.assign(buf, start, length);
+											//cout << keyword << endl;
+											iter = find(list_map[file_ID].begin(), list_map[file_ID].end(), keyword);
+											if (iter == list_map[file_ID].end())
+											{
+												list_map[file_ID].push_back(keyword);
+											}
+											i = j;
+											break;
 										}
-										i = j;
-										break;
 									}
 								}
 							}
 						}
+						memset(buf, 0, sizeof(buf));
 					}
-					memset(buf, 0, sizeof(buf));
-				}
 
-				sort(v.begin(), v.end());
+					sort(list_map[file_ID].begin(), list_map[file_ID].end());
+					list_map[file_ID].shrink_to_fit(); // requests the container to reduce its capacity to fit its size
+					cout << "Capacity = " << list_map[file_ID].capacity() << endl;
 
-				list_path = "./List/" + to_string(file_ID) + ".list";
-				list_file.open(list_path, ios::out);
-				if (!list_file)
-				{
-					cerr << "Error: open " << list_path << "  failed..." << endl;
-					log_file << "Error: open " << list_path << "  failed..." << endl;
-				}
-				else
-				{
-
-					for (int i = 0; i < v.size(); i++)
-					{
-						//cout << v[i] << endl;
-						list_file << v[i] << '\n';
-					}
 					doc_file.close();
 				}
-				list_file.close();
+
+				log_file << "          File ID: " << file_ID << ", ";
+				log_file << "Number of keyword: " << list_map[file_ID].size() << endl << endl;
 			}
 
-			//cout << "Parse " << v.size() << " not duplicate keywords" << endl << endl;
+			for (it = list_map.begin(); it != list_map.end(); it++)
+			{
+				//cout << it->first << ":";
+				list_file << it->first << ":";
+				file_ID = it->first;
+				
+				temp_number = list_map[file_ID].size();
+				for (int i = 0; i < temp_number; i++)
+				{
+					//cout << invert_index_map[keyword][i] << " ";
+					list_file << list_map[file_ID][i] << " ";
+				}
+				//cout <<endl;
+				list_file << endl;
+			}
+			list_file.close();
 		}
 	}
 	/* Program to Timing */
